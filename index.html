@@ -367,12 +367,18 @@
     flex-shrink:0;
   }
   .contact-method .icon svg{ width:20px; height:20px; stroke:var(--white); }
-  .contact-method .label{ text-align:left; }
+  .contact-method .label{
+    text-align:left;
+    min-width:0;
+    flex:1;
+  }
   .contact-method .label small{
     display:block;
     font-weight:400;
     color: var(--muted);
     font-size:0.8rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* Footer */
