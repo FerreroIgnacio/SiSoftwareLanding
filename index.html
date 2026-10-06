@@ -56,6 +56,8 @@
     z-index: 50;
     background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 70%, rgba(255,255,255,0) 100%);
   }
+  header.nav-fixed{ position: fixed; transition: transform .3s ease; }
+  header.nav-hidden{ transform: translateY(-100%); }
   .brand, .nav-links a{ text-shadow: 0 0 10px rgba(255,255,255,0.9); }
   .nav{
     display:flex;
@@ -236,6 +238,7 @@
   .d-table td{ padding:8px; border-bottom:1px solid rgba(31,26,23,0.07); white-space:nowrap; }
   .d-table tr.new td{ background:#fff1e3; font-weight:600; }
   .d-table .num{ text-align:right; }
+  .d-table td[data-k="det"]{ white-space:normal; }
   .tall .d-table th, .tall .d-table td{ padding:5px 4px; }
   .tall .d-table th{ font-size:10px; }
   .tall .d-wide{ display:none; }
@@ -277,9 +280,11 @@
   .d-cam{ flex:1; min-height:0; position:relative; border-radius:14px; overflow:hidden; background:linear-gradient(180deg,#3a3430 0%,#3a3430 72%,#4a433e 72%); color:#fff; }
   .d-cam-h{ position:absolute; top:10px; left:12px; right:12px; display:flex; justify-content:space-between; font-size:12px; font-weight:600; }
   .d-cam-h .rec{ color:#ff5a4a; }
-  .d-op{ position:absolute; left:50%; bottom:52px; width:140px; height:260px; margin-left:-70px; }
-  .tall .d-op{ transform:scale(.82); transform-origin:50% 100%; bottom:46px; }
-  .d-op svg{ width:100%; height:100%; display:block; overflow:visible; }
+  .d-shot{ position:absolute; top:32px; left:50%; height:calc(100% - 76px); aspect-ratio:3/5; transform:translateX(-50%); }
+  .d-shot img{ width:100%; height:100%; display:block; }
+  .d-shot svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .d-box.m{ border:0; }
+  .d-box.m i{ background:var(--c); color:#111; }
   .d-box{ position:absolute; border:2px solid #3ccf6e; }
   .d-box i{ position:absolute; top:-19px; left:-2px; background:#3ccf6e; color:#06240f; font-size:11px; font-style:normal; font-weight:700; padding:1px 5px; white-space:nowrap; }
   .d-box.side i{ top:-2px; left:calc(100% + 4px); }
@@ -931,6 +936,45 @@
 
 <script>
 (function(){
+  const header = document.querySelector('header');
+  let lastY = window.scrollY;
+  let anchor = 0; // posición en la página cuando no está fija
+  const setFixed = (hidden) => {
+    header.style.transition = 'none';
+    header.style.top = '';
+    header.classList.add('nav-fixed');
+    header.classList.toggle('nav-hidden', hidden);
+    header.offsetHeight;
+    header.style.transition = '';
+  };
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    const h = header.offsetHeight;
+    const fixed = header.classList.contains('nav-fixed');
+    const hidden = header.classList.contains('nav-hidden');
+    if (y <= 0) {
+      header.classList.remove('nav-fixed', 'nav-hidden');
+      header.style.top = '';
+      anchor = 0;
+    } else if (!fixed) {
+      // Sin fijar se mueve con la página; cuando sale de vista pasa a fija oculta, y si subís hasta alcanzarla se fija visible
+      if (y > anchor + h) setFixed(true);
+      else if (y < lastY && y < anchor) setFixed(false);
+    } else if (y > lastY) {
+      if (!hidden && y <= h) {
+        // Cerca del tope: se suelta donde está y se va con el scroll común
+        anchor = lastY;
+        header.style.top = anchor + 'px';
+        header.classList.remove('nav-fixed');
+      } else header.classList.add('nav-hidden');
+    } else if (y < lastY) header.classList.remove('nav-hidden');
+    lastY = y;
+  }, { passive: true });
+})();
+</script>
+
+<script>
+(function(){
   const track = document.querySelector('.hero-track');
   if (!track) return;
 
@@ -984,19 +1028,10 @@
   };
 
   // 2. Control de EPP con visión
-  const OP = '<svg viewBox="0 0 140 260" aria-hidden="true">' +
-    '<rect x="50" y="166" width="17" height="90" rx="6" fill="#2d3a55"/><rect x="73" y="166" width="17" height="90" rx="6" fill="#2d3a55"/>' +
-    '<rect x="22" y="78" width="16" height="78" rx="8" fill="#3d4f74"/><rect x="102" y="78" width="16" height="78" rx="8" fill="#3d4f74"/>' +
-    '<rect x="36" y="70" width="68" height="104" rx="16" fill="#3d4f74"/>' +
-    '<path d="M40 74 H100 V152 H40Z" fill="#f07f1d"/><rect x="40" y="102" width="60" height="7" fill="#f4f1d0"/><rect x="40" y="124" width="60" height="7" fill="#f4f1d0"/>' +
-    '<circle cx="70" cy="44" r="22" fill="#d9a77c"/>' +
-    '<path d="M44 38 A26 24 0 0 1 96 38 L101 41 L39 41Z" fill="#f2c230"/>' +
-    '<g data-k="gl"><rect x="52" y="43" width="15" height="8" rx="3" fill="#1b1b1b"/><rect x="73" y="43" width="15" height="8" rx="3" fill="#1b1b1b"/><rect x="66" y="45" width="8" height="2" fill="#1b1b1b"/></g>' +
-    '</svg>';
   const epp = {
     tpl: left('Cámara en la línea',
       '<div class="d-cam"><div class="d-cam-h"><span><span class="rec">●</span> Cam 03 · Línea 2</span><span data-k="clk">09:41:02</span></div>' +
-      '<div class="d-op" data-k="op" hidden>' + OP + '<div data-k="boxes"></div></div><div class="d-gate" data-k="gate" hidden></div></div>') +
+      '<div class="d-shot" data-k="op"><img data-k="img" src="demos/epp-ok.jpg" alt=""><svg data-k="masks" viewBox="0 0 600 1000" preserveAspectRatio="none"></svg><div data-k="boxes"></div></div><div class="d-gate" data-k="gate" hidden></div></div>') +
       '<div class="d-right">' +
         '<div class="d-ph"><div><b>Seguridad e higiene</b><small>Planta · hoy</small></div>' + pill('', 'Visión artificial') + '</div>' +
         '<div class="d-kpis">' +
@@ -1015,29 +1050,45 @@
       '</div>',
     dur: 15500,
     steps: ({ $ }) => {
-      const box = (cls, x, y, w, h, t) => $('boxes').insertAdjacentHTML('beforeend',
-        '<div class="d-box ' + cls + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px"><i>' + t + '</i></div>');
+      // Coordenadas en px sobre las fotos de 600x1000 (detecciones de YOLOE)
+      // Con color y polígono: máscara de segmentación; sin ellos: caja roja de lo que falta
+      const box = (cls, x, y, w, h, t, c, pts) => {
+        if (pts) $('masks').insertAdjacentHTML('beforeend', '<polygon points="' + pts + '" fill="' + c + '" fill-opacity=".38" stroke="' + c + '" stroke-width="3"/>');
+        $('boxes').insertAdjacentHTML('beforeend',
+          '<div class="d-box ' + cls + '" style="left:' + x / 6 + '%;top:' + y / 10 + '%;width:' + w / 6 + '%;height:' + h / 10 + '%' + (c ? ';--c:' + c : '') + '"><i>' + t + '</i></div>');
+      };
       const gate = (cls, t) => { $('gate').className = 'd-gate ' + cls; $('gate').textContent = t; $('gate').hidden = false; };
       const log = (cls, html) => { $('log').insertAdjacentHTML('afterbegin', '<div class="' + cls + '">' + html + '</div>'); $('log').lastElementChild.remove(); };
-      const scan = (t0, glasses) => [
-        [t0, () => { $('op').hidden = false; }],
-        [t0 + 600, () => box('', -8, -8, 156, 272, 'persona 0.98')],
-        [t0 + 1100, () => box('side', 38, 12, 64, 32, 'casco ✓')],
-        [t0 + 1500, () => box('side', 36, 70, 68, 86, 'chaleco ✓')],
-        [t0 + 1900, () => glasses ? box('lside', 48, 39, 44, 16, 'anteojos ✓') : box('lside r', 48, 39, 44, 16, 'sin anteojos')]
+      const scan = (t0, img, boxes) => [
+        [t0, () => { $('img').src = img; $('op').hidden = false; }],
+        ...boxes.map((b, k) => [t0 + 600 + k * 400, () => box(...b)])
       ];
       return [
-        ...scan(500, true),
-        [2900, () => { gate('g', '✓ Acceso habilitado'); $('clk').textContent = '09:41:05'; }],
-        [3300, () => { log('g', '<span>09:41 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado')); up($('ing'), '48'); }],
-        [5600, () => { $('op').hidden = true; $('boxes').innerHTML = ''; $('gate').hidden = true; $('gl').style.display = 'none'; $('clk').textContent = '09:43:16'; }],
-        ...scan(6400, false),
-        [8900, () => gate('r', '✗ Falta: anteojos')],
-        [9400, () => {
-          log('r', '<span>09:43 · Cam 03 · Sin anteojos</span>' + pill('r', 'Bloqueado'));
+        ...scan(500, 'demos/epp-ok.jpg', [
+          ['m', 134, 58, 300, 906, 'persona 0.93', '#4f8cff', '259,65 241,73 229,84 220,100 214,120 214,134 236,193 236,214 217,232 178,251 159,284 146,336 147,388 135,504 135,542 143,565 152,573 164,578 172,578 181,566 184,547 187,552 193,583 203,695 204,805 209,866 176,917 172,929 175,934 187,938 203,935 250,909 258,900 263,856 266,684 268,671 272,665 274,639 281,611 280,603 284,599 287,611 299,633 306,663 315,683 317,700 322,708 332,816 346,916 359,933 364,946 372,954 394,958 407,952 410,939 405,915 389,884 387,746 382,722 365,707 355,690 346,620 352,598 366,580 378,548 382,556 390,558 403,553 412,562 421,565 429,560 431,554 429,496 426,489 420,424 411,382 409,344 393,290 372,247 361,235 327,223 309,212 302,203 300,190 310,141 310,114 302,93 290,78 271,66'],
+          ['side m', 211, 61, 101, 82, 'casco ✓', '#ffd23f', '212,113 212,134 221,142 232,127 253,120 285,121 297,128 303,136 309,133 312,124 312,115 301,84 275,62 252,62 234,73 221,89'],
+          ['lside m', 228, 130, 73, 29, 'anteojos ✓', '#22d3ee', '229,153 240,158 253,157 264,151 286,155 296,151 300,146 299,131 230,131'],
+          ['side m', 173, 218, 198, 288, 'chaleco ✓', '#3ccf6e', '365,233 323,220 309,219 295,236 284,262 282,275 266,306 259,301 234,223 205,238 184,245 177,251 173,259 173,305 186,333 193,364 188,382 185,420 189,495 192,503 240,503 255,498 264,490 283,499 365,502 370,472 369,399 355,334 356,307 368,242'],
+          ['lside m', 135, 486, 44, 97, 'guante ✓', '#ff6bd6', '141,487 136,495 136,556 150,574 171,582 178,573 179,542 169,511 169,489'],
+          ['side m', 382, 485, 51, 86, 'guante ✓', '#b57bff', '396,486 394,521 383,546 383,568 390,571 403,550 409,565 415,570 419,569 433,548 428,490 424,486']
+        ]),
+        [3500, () => { gate('g', '✓ Acceso habilitado'); $('clk').textContent = '09:41:05'; }],
+        [3900, () => { log('g', '<span>09:41 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado')); up($('ing'), '48'); }],
+        [6200, () => { $('boxes').innerHTML = ''; $('masks').innerHTML = ''; $('gate').hidden = true; $('clk').textContent = '09:43:16'; }],
+        ...scan(6200, 'demos/epp-falta.jpg', [
+          ['m', 134, 100, 280, 823, 'persona 0.93', '#4f8cff', '250,104 235,110 225,119 209,153 209,165 223,198 229,227 227,240 215,251 183,270 165,289 155,316 142,390 137,483 140,558 143,567 152,577 165,577 174,570 176,559 172,540 178,490 184,469 187,484 187,561 197,632 199,817 203,837 170,891 167,904 175,911 190,910 244,879 248,874 254,815 252,756 258,687 255,665 272,593 280,602 309,706 312,803 317,825 318,850 325,877 340,905 349,915 358,920 369,920 381,914 383,901 362,848 365,806 365,713 346,675 338,626 338,609 341,596 356,566 355,520 350,477 351,452 353,449 360,458 365,471 373,510 376,549 379,553 390,552 402,560 407,558 411,551 406,460 389,379 364,292 354,275 344,266 297,241 290,233 288,215 297,177 298,149 292,132 275,112 259,104'],
+          ['side m', 206, 101, 94, 75, 'casco ✓', '#ffd23f', '206,150 206,165 214,173 219,174 224,164 235,157 274,157 281,159 290,168 296,168 300,159 296,135 290,123 265,101 241,101 228,111 215,128'],
+          ['lside m', 224, 165, 64, 25, 'anteojos ✓', '#22d3ee', '224,165 224,183 235,189 245,189 259,180 266,186 277,186 288,178 288,170 284,165'],
+          ['side r', 165, 246, 200, 269, 'sin chaleco'],
+          ['lside r', 137, 533, 38, 42, 'sin guante'],
+          ['side r', 378, 524, 40, 40, 'sin guante']
+        ]),
+        [9500, () => gate('r', '✗ Falta: chaleco y guantes')],
+        [10000, () => {
+          log('r', '<span>09:43 · Cam 03 · Sin chaleco ni guantes</span>' + pill('r', 'Bloqueado'));
           up($('ing'), '49'); up($('cum'), '96%', 'bad'); up($('ale'), '2', 'bad');
         }],
-        [10600, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:43</small></span>')]
+        [11200, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:43</small></span>')]
       ];
     }
   };
@@ -1063,7 +1114,14 @@
     '<rect x="36" y="288" width="28" height="24" rx="4" fill="#6b625a"/><text x="70" y="322" font-size="11" font-weight="600" fill="#6b625a" font-family="Inter, sans-serif">Depósito</text>' +
     STOPS.map((s, k) => '<circle data-k="m' + k + '" cx="' + PTS[s.v][0] + '" cy="' + PTS[s.v][1] + '" r="11" fill="#b9b2ab" stroke="#fff" stroke-width="3"/>' +
       '<text x="' + (PTS[s.v][0] + 16) + '" y="' + (PTS[s.v][1] - 14) + '" font-size="12" font-weight="700" fill="#1f1a17" font-family="Inter, sans-serif">' + s.n + '</text>').join('') +
-    '<g data-k="truck" transform="translate(50 300)"><rect x="-14" y="-10" width="28" height="20" rx="5" fill="#1f1a17"/><rect x="5" y="-6" width="6" height="12" fill="#f07f1d"/></g>' +
+    '<g data-k="truck" transform="translate(50 300) rotate(-90)">' +
+      '<rect x="-19" y="-7.5" width="40" height="18" rx="3" fill="#000" opacity=".15"/>' +
+      '<rect x="7" y="-3" width="3" height="6" fill="#1f1a17"/>' +
+      '<rect x="-20" y="-9" width="27" height="18" rx="2" fill="#fff" stroke="#1f1a17" stroke-width="1.2"/>' +
+      '<path d="M-13 -8.4V8.4M-6 -8.4V8.4M1 -8.4V8.4" stroke="#e2dad2" stroke-width="1"/>' +
+      '<rect x="14" y="-11.5" width="2.5" height="3.5" rx="1" fill="#1f1a17"/><rect x="14" y="8" width="2.5" height="3.5" rx="1" fill="#1f1a17"/>' +
+      '<path d="M10 -8H15Q20 -8 20 -3V3Q20 8 15 8H10Z" fill="#f07f1d" stroke="#1f1a17" stroke-width="1.2"/>' +
+      '<path d="M15.5 -6.3Q18.6 -5.8 18.6 -2.5V2.5Q18.6 5.8 15.5 6.3Z" fill="#2b3a4a"/></g>' +
     '</svg>';
   const flota = {
     tpl: left('El repartidor, en su celular',
@@ -1086,11 +1144,26 @@
         let k = 1;
         while (k < PTS.length - 1 && CUM[k] < d) k++;
         const f = (d - CUM[k - 1]) / (CUM[k] - CUM[k - 1]);
-        return { k, x: PTS[k - 1][0] + (PTS[k][0] - PTS[k - 1][0]) * f, y: PTS[k - 1][1] + (PTS[k][1] - PTS[k - 1][1]) * f };
+        const dx = PTS[k][0] - PTS[k - 1][0], dy = PTS[k][1] - PTS[k - 1][1];
+        return { k, x: PTS[k - 1][0] + dx * f, y: PTS[k - 1][1] + dy * f, a: heading(d) };
+      };
+      // Gira de a poco en cada esquina; en las paradas gira recién al arrancar
+      const segA = j => Math.atan2(PTS[j][1] - PTS[j - 1][1], PTS[j][0] - PTS[j - 1][0]) * 180 / Math.PI;
+      const heading = d => {
+        const R = 16;
+        for (let j = 1; j < PTS.length - 1; j++) {
+          const t0 = STOPS.some(s => s.v === j) ? CUM[j] : CUM[j] - R, t1 = CUM[j] + R;
+          if (d > t0 && d < t1) {
+            const a0 = segA(j), da = ((segA(j + 1) - a0 + 540) % 360) - 180, t = (d - t0) / (t1 - t0);
+            return a0 + da * t * t * (3 - 2 * t);
+          }
+          if (d <= t0) return segA(j);
+        }
+        return segA(PTS.length - 1);
       };
       const drive = (from, to) => anim(2700, p => {
         const d = from + (to - from) * p, pos = at(d);
-        $('truck').setAttribute('transform', 'translate(' + pos.x + ' ' + pos.y + ')');
+        $('truck').setAttribute('transform', 'translate(' + pos.x + ' ' + pos.y + ') rotate(' + pos.a + ')');
         $('done').setAttribute('points', PTS.slice(0, pos.k).concat([[pos.x, pos.y]]).join(' '));
         $('km').textContent = (d * 0.0145).toFixed(1).replace('.', ',');
       });
@@ -1313,13 +1386,30 @@
     });
     timers.push(setTimeout(() => (k + 1 < d.scenes.length ? play(n, k + 1) : go(1)), scene.dur - off));
   }
+  // Copia de la primera slide al final, para pasar de la última a la primera deslizando
+  const ghost = document.createElement('div');
+  ghost.className = 'hero-slide';
+  ghost.setAttribute('aria-hidden', 'true');
+  track.appendChild(ghost);
+  const N = slides.length;
+  const moveTo = (i, anim) => {
+    track.style.transition = anim ? '' : 'none';
+    track.style.transform = 'translateX(' + (-i * 100) + '%)';
+    if (!anim) { void track.offsetWidth; track.style.transition = ''; }
+  };
   function go(dir, to){
-    const next = to === undefined ? (cur + dir + slides.length) % slides.length : to;
-    const wrap = Math.abs(next - cur) > 1;
+    const next = to === undefined ? (cur + dir + N) % N : to;
+    const fwdWrap = to === undefined && cur === N - 1 && next === 0;
+    const backWrap = to === undefined && cur === 0 && next === N - 1;
+    if (fwdWrap || backWrap) ghost.innerHTML = overview.innerHTML;
+    if (backWrap) moveTo(N, false);
+    const slide = to === undefined || Math.abs(next - cur) <= 1;
     cur = next;
-    track.style.transition = wrap ? 'none' : '';
-    track.style.transform = 'translateX(' + (-cur * 100) + '%)';
-    if (wrap) { void track.offsetWidth; track.style.transition = ''; }
+    if (fwdWrap) {
+      moveTo(N, true);
+      const id = run + 1;
+      setTimeout(() => { if (id === run && cur === 0) moveTo(0, false); }, 600);
+    } else moveTo(cur, slide);
     play(cur, 0);
   }
   document.querySelectorAll('.hero-arrow').forEach(btn => {
