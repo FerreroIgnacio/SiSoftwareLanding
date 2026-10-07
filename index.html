@@ -1333,10 +1333,6 @@
     DEMOS.map((d, n) => '<div class="ov-tile"><span class="ov-t">' + (n + 1) + ' · ' + d.t + '<button type="button">Ver demostración →</button></span><span class="ov-prev"><span class="demo-body ov-body"></span></span></div>').join('') +
     '</div></div>';
   overview.querySelectorAll('.ov-tile').forEach((tile, n) => {
-    const body = tile.querySelector('.ov-body'), scene = DEMOS[n].scenes[0];
-    body.innerHTML = scene.tpl;
-    const $ = key => body.querySelector('[data-k="' + key + '"]');
-    scene.steps({ $, anim: (ms, fn) => fn(1), off: Infinity }).sort((a, b) => a[0] - b[0]).forEach(([, fn]) => fn());
     tile.addEventListener('click', () => go(0, n + 1));
   });
   track.appendChild(overview);
@@ -1364,9 +1360,21 @@
     const st = starts(n);
     total = st[st.length - 1];
     t0 = performance.now() - st[k] - off;
-    if (n === 0) { timers.push(setTimeout(() => go(1), 7000 - off)); return; }
-    const id = run, d = DEMOS[n - 1], scene = d.scenes[k], body = slides[n].querySelector('.demo-body');
+    const id = run;
+    if (n === 0) {
+      // Cada cuadro de la grilla reproduce su demo como un video, en loop
+      overview.querySelectorAll('.ov-body').forEach((body, i) => {
+        const sc = DEMOS[i].scenes;
+        (function loop(j){ runScene(body, sc[j], 0, id, () => loop((j + 1) % sc.length)); })(0);
+      });
+      timers.push(setTimeout(() => go(1), 7000 - off));
+      return;
+    }
+    const d = DEMOS[n - 1], scene = d.scenes[k], body = slides[n].querySelector('.demo-body');
     slides[n].querySelectorAll('.demo-tab').forEach((b, j) => b.classList.toggle('on', j === k));
+    runScene(body, scene, off, id, () => (k + 1 < d.scenes.length ? play(n, k + 1) : go(1)));
+  }
+  function runScene(body, scene, off, id, onEnd){
     body.innerHTML = scene.tpl;
     const $ = key => body.querySelector('[data-k="' + key + '"]');
     const start = performance.now() - off;
@@ -1384,7 +1392,7 @@
       const exec = () => { at = t; fn(); };
       if (t < off) exec(); else timers.push(setTimeout(exec, t - off));
     });
-    timers.push(setTimeout(() => (k + 1 < d.scenes.length ? play(n, k + 1) : go(1)), scene.dur - off));
+    timers.push(setTimeout(onEnd, scene.dur - off));
   }
   // Copia de la primera slide al final, para pasar de la última a la primera deslizando
   const ghost = document.createElement('div');
@@ -1401,8 +1409,7 @@
     const next = to === undefined ? (cur + dir + N) % N : to;
     const fwdWrap = to === undefined && cur === N - 1 && next === 0;
     const backWrap = to === undefined && cur === 0 && next === N - 1;
-    if (fwdWrap || backWrap) ghost.innerHTML = overview.innerHTML;
-    if (backWrap) moveTo(N, false);
+    if (backWrap) { ghost.innerHTML = overview.innerHTML; moveTo(N, false); }
     const slide = to === undefined || Math.abs(next - cur) <= 1;
     cur = next;
     if (fwdWrap) {
@@ -1411,6 +1418,7 @@
       setTimeout(() => { if (id === run && cur === 0) moveTo(0, false); }, 600);
     } else moveTo(cur, slide);
     play(cur, 0);
+    if (fwdWrap) ghost.innerHTML = overview.innerHTML;
   }
   document.querySelectorAll('.hero-arrow').forEach(btn => {
     btn.addEventListener('click', () => go(Number(btn.dataset.dir)));
