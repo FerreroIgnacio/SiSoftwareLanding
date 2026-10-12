@@ -134,6 +134,7 @@
   }
   .hero-carousel{
     position:absolute; inset:64px 0 28px 0;
+    z-index:1;
     overflow:hidden;
     touch-action: pan-y; user-select:none;
   }
@@ -177,8 +178,6 @@
   .si-main{ position:relative; display:inline-block; }
   .si-main::after{ content:""; position:absolute; left:4%; right:0; bottom:2px; height:5px; background:var(--accent); border-radius:10px; transform:scaleX(0); transform-origin:left center; transition:transform .45s; }
   .q-main:hover .si-main::after, .q-main:focus-visible .si-main::after{ transform:scaleX(1); }
-  .demo-meta{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
-  .demo-tag{ font-size:13px; color:var(--muted); border:1px solid rgba(31,26,23,0.15); border-radius:999px; padding:5px 11px; background:#fff; text-decoration:none; }
   .tall .demo-top{ flex-direction:column; align-items:flex-start; gap:8px; margin-bottom:10px; }
   .tall .demo-q{ font-size:23px; }
   .demo-tabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
@@ -311,9 +310,19 @@
     border-radius:50%;
     background: radial-gradient(circle, rgba(240,127,29,0.06), transparent 65%);
     pointer-events:none;
-    z-index:10;
+    z-index:0; /* por debajo de las demos y del ticket, por encima de los fondos */
     transform: translate3d(-50%,-50%,0);
     opacity:0;
+    transition: opacity .3s ease;
+  }
+  /* Las flechas quedan por encima de las demos, pero la luz tiene que pasarles por encima:
+     cada uno dibuja su parte de la luz, ubicada con la posición del cursor (--gx/--gy) */
+  .hero-arrow::after{
+    content:""; position:absolute; inset:0;
+    border-radius:inherit;
+    pointer-events:none;
+    background: radial-gradient(circle var(--gr, 332px) at var(--gx, -999px) var(--gy, -999px), rgba(240,127,29,0.06), transparent 65%);
+    opacity:var(--glow-o, 0);
     transition: opacity .3s ease;
   }
   @media (hover: none), (prefers-reduced-motion: reduce){
@@ -348,27 +357,6 @@
     .hero-arrow[data-dir="1"]{ right:10px; }
   }
 
-  .hero-inner{
-    position:relative;
-    max-width:1140px;
-    width:100%;
-    margin:0 auto;
-    padding: 36px 24px 52px;
-  }
-  .hero-more{ text-align:center; }
-  .hero .hero-more p.lead{ margin-left:auto; margin-right:auto; }
-  .hero p.lead{
-    font-size: clamp(1rem, 1.4vw, 1.12rem);
-    color: rgba(31,26,23,0.88);
-    max-width: 520px;
-    margin: 0 0 28px;
-  }
-  .hero-actions{
-    display:flex;
-    gap:14px;
-    flex-wrap:wrap;
-    justify-content:center;
-  }
   .btn{
     display:inline-flex;
     align-items:center;
@@ -392,9 +380,6 @@
   }
   .btn-outline:hover{ background: rgba(31,26,23,0.09); }
 
-  @media (max-width: 900px){
-    .hero-inner{ padding-top:10px; }
-  }
 
   /* ---------- SECTIONS ---------- */
   section{ padding: 96px 24px; }
@@ -698,120 +683,7 @@
     font-weight:600;
   }
   footer .brand-foot .mark{ width:22px; height:22px; }
-  /* ---------- Transición entre páginas: demos "está abajo" de la home ---------- */
-  @view-transition{ navigation:auto; }
-  @media (prefers-reduced-motion: no-preference){
-    html:active-view-transition-type(down)::view-transition-old(root){ animation: vt-out-up .55s cubic-bezier(.65,0,.35,1) both; }
-    html:active-view-transition-type(down)::view-transition-new(root){ animation: vt-in-up .55s cubic-bezier(.65,0,.35,1) both; }
-    html:active-view-transition-type(up)::view-transition-old(root){ animation: vt-out-down .55s cubic-bezier(.65,0,.35,1) both; }
-    html:active-view-transition-type(up)::view-transition-new(root){ animation: vt-in-down .55s cubic-bezier(.65,0,.35,1) both; }
-  }
-  /* En un viaje con scroll, el deslizamiento lo anima el script siguiendo la misma curva que el scroll */
-  html:active-view-transition-type(trip)::view-transition-old(root),
-  html:active-view-transition-type(trip)::view-transition-new(root){ animation:none; }
-  @keyframes vt-out-up{ to{ transform:translateY(-100%); } }
-  @keyframes vt-in-up{ from{ transform:translateY(100%); } }
-  @keyframes vt-out-down{ to{ transform:translateY(100%); } }
-  @keyframes vt-in-down{ from{ transform:translateY(-100%); } }
 </style>
-<link rel="expect" href="#pie" blocking="render">
-<script>
-  // Demos está "abajo" de la home. Cambiar de página es un solo viaje: lo que falta scrollear de la página
-  // actual + el deslizamiento entre páginas + (al volver a la home) la subida hasta la sección pedida.
-  // Todo el viaje sigue una única curva (acelera la primera mitad, frena la segunda) y cada tramo
-  // toma su parte de esa curva, así la velocidad no se corta entre tramos.
-  (function(){
-    const onDemos = location.pathname.endsWith('demos.html');
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const canTrip = !reduce && 'PageRevealEvent' in window && CSS.supports('selector(:active-view-transition-type(a))');
-    const maxScroll = () => document.documentElement.scrollHeight - innerHeight;
-    const pos = (trip, t) => {
-      const u = Math.min(1, Math.max(0, t / trip.T));
-      return trip.D * (u < .5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u));
-    };
-    const time = (trip, x) => trip.T * (x <= trip.D / 2 ? Math.sqrt(x / (2 * trip.D)) : 1 - Math.sqrt(Math.max(0, trip.D - x) / (2 * trip.D)));
-
-    // Recorre con scroll el tramo [a, b] del viaje; scroll = y0 + dir * (avance - a) * scale
-    function runScroll(trip, a, b, y0, dir, scale, done){
-      const ta = time(trip, a), tb = time(trip, b), t0 = performance.now();
-      if (b - a < 1) return done && done();
-      (function step(now){
-        const t = Math.min(tb, ta + now - t0);
-        scrollTo({ top: y0 + dir * (pos(trip, t) - a) * scale, behavior: 'instant' });
-        if (t < tb) requestAnimationFrame(step); else if (done) done();
-      })(t0);
-    }
-
-    // Sin viaje en curso (o sin soporte): scroll simple hasta un punto
-    function scrollAnim(to, done){
-      const dist = to - scrollY;
-      if (reduce || Math.abs(dist) < 2) { scrollTo({ top: to, behavior: 'instant' }); return done && done(); }
-      runScroll({ D: Math.abs(dist), T: Math.min(1400, Math.max(500, Math.abs(dist) * 0.35)) }, 0, Math.abs(dist), scrollY, Math.sign(dist), 1, done);
-    }
-
-    // La home guarda dónde está cada sección, para que desde demos se sepa cuánto falta subir
-    if (!onDemos) {
-      const save = () => {
-        const offsets = {};
-        document.querySelectorAll('main[id], section[id]').forEach(el => { offsets['#' + el.id] = el.getBoundingClientRect().top + scrollY; });
-        try { sessionStorage.setItem('home-layout', JSON.stringify({ max: maxScroll(), offsets })); } catch (err) {}
-      };
-      addEventListener('load', save);
-      addEventListener('resize', save);
-    }
-
-    window.addEventListener('pagereveal', e => {
-      if (!e.viewTransition) return;
-      let trip = null;
-      try { trip = JSON.parse(sessionStorage.getItem('vt-trip')); sessionStorage.removeItem('vt-trip'); } catch (err) {}
-      if (!trip || trip.to !== location.pathname) { e.viewTransition.types.add(onDemos ? 'down' : 'up'); return; }
-      e.viewTransition.types.add('trip');
-      if (!onDemos) scrollTo({ top: maxScroll(), behavior: 'instant' });
-
-      const a = trip.d1, b = trip.d1 + trip.H, ta = time(trip, a), tb = time(trip, b), dur = Math.max(1, tb - ta);
-      const sign = onDemos ? -1 : 1; // hacia demos todo sube; hacia la home todo baja
-      const frames = n => Array.from({ length: 25 }, (_, i) => {
-        const p = (pos(trip, ta + dur * i / 24) - a) / trip.H;
-        return { offset: i / 24, transform: 'translateY(' + sign * (n ? p - 1 : p) * 100 + '%)' };
-      });
-      e.viewTransition.ready.then(() => {
-        const opts = { duration: dur, easing: 'linear', fill: 'both' };
-        document.documentElement.animate(frames(0), { ...opts, pseudoElement: '::view-transition-old(root)' });
-        document.documentElement.animate(frames(1), { ...opts, pseudoElement: '::view-transition-new(root)' });
-      });
-
-      if (!onDemos) e.viewTransition.finished.then(() => {
-        const el = trip.hash && document.querySelector(trip.hash);
-        const real = maxScroll() - (el ? el.getBoundingClientRect().top + scrollY : 0);
-        const done = () => { if (trip.hash) history.replaceState(null, '', trip.hash); };
-        if (trip.d3 > 0) runScroll(trip, b, trip.D, maxScroll(), -1, real / trip.d3, done);
-        else scrollAnim(maxScroll() - real, done);
-      });
-    });
-
-    document.addEventListener('click', e => {
-      const link = e.target.closest('a[href]');
-      if (!link || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || link.target) return;
-      const url = new URL(link.href, location.href);
-      if (url.origin !== location.origin || url.pathname === location.pathname) return;
-      e.preventDefault();
-      if (!canTrip) return scrollAnim(onDemos ? 0 : maxScroll(), () => { location.href = url.href; });
-
-      const H = innerHeight, d1 = onDemos ? scrollY : maxScroll() - scrollY;
-      let d3 = 0;
-      if (onDemos) {
-        let layout = null;
-        try { layout = JSON.parse(sessionStorage.getItem('home-layout')); } catch (err) {}
-        if (layout) d3 = Math.max(0, layout.max - (layout.offsets[url.hash] || 0));
-      }
-      const D = d1 + H + d3;
-      const trip = { to: url.pathname, hash: url.hash, d1, H, d3, D, T: Math.min(1700, Math.max(700, D * 0.3)) };
-      try { sessionStorage.setItem('vt-trip', JSON.stringify(trip)); } catch (err) {}
-      if (onDemos) url.hash = '';
-      runScroll(trip, 0, d1, scrollY, onDemos ? -1 : 1, 1, () => { location.href = url.href; });
-    });
-  })();
-</script>
 </head>
 <body>
 
@@ -827,7 +699,6 @@
     <ul class="nav-links">
       <li><a href="#top">Inicio</a></li>
       <li><a href="#nosotros">Cómo trabajamos</a></li>
-      <li><a href="demos.html">Demostraciones</a></li>
       <li><a href="#contacto">Contacto</a></li>
     </ul>
     <a class="nav-cta" href="#contacto">Hablemos</a>
@@ -844,14 +715,6 @@
       <div class="hero-progress" role="slider" aria-label="Momento de la demo"><span></span></div>
       <button class="hero-arrow" type="button" data-dir="-1" aria-label="Demo anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
       <button class="hero-arrow" type="button" data-dir="1" aria-label="Demo siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
-    </div>
-    <div class="hero-inner">
-      <div class="hero-more">
-        <p class="lead">Estas son solo algunas demostraciones breves, pero podés ver más acá.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="demos.html">Ver más demostraciones</a>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -1374,12 +1237,10 @@
     { t: 'Gestión de una fábrica', q: '¿Necesitás ventas, stock y producción juntos?', scenes: [venta, venc, prod] }
   ];
 
-  const allTag = '<div class="demo-meta"><a class="demo-tag" href="demos.html">Ver todas las demostraciones (' + DEMOS.length + ')</a></div>';
-
   // Primera slide: las 4 demos en una grilla, en su estado final, para mostrar que hay más de una
   const overview = document.createElement('div');
   overview.className = 'hero-slide';
-  overview.innerHTML = '<div class="demo-canvas"><div class="demo-top"><div class="demo-q q-main" tabindex="0">¿Necesitás software hecho para tu operación?<span class="si si-main">Si</span></div>' + allTag +
+  overview.innerHTML = '<div class="demo-canvas"><div class="demo-top"><div class="demo-q q-main" tabindex="0">¿Necesitás software a medida para tu operación?<span class="si si-main">Si</span></div>' +
     '</div><div class="ov-grid">' +
     DEMOS.map((d, n) => '<div class="ov-tile"><span class="ov-t">' + (n + 1) + ' · ' + d.t + '<button type="button">Ver demostración →</button></span><span class="ov-prev"><span class="demo-body ov-body"></span></span></div>').join('') +
     '</div></div>';
@@ -1392,7 +1253,7 @@
     const n = i + 1;
     const s = document.createElement('div');
     s.className = 'hero-slide';
-    s.innerHTML = '<div class="demo-canvas"><div class="demo-top"><div class="demo-q q-main" tabindex="0">' + d.q + '<span class="si si-main">Si</span></div>' + allTag + '</div>' +
+    s.innerHTML = '<div class="demo-canvas"><div class="demo-top"><div class="demo-q q-main" tabindex="0">' + d.q + '<span class="si si-main">Si</span></div></div>' +
       (d.scenes.length > 1 ? '<div class="demo-tabs">' + d.scenes.map((sc, k) => '<button class="demo-tab" type="button">' + sc.name + '</button>').join('') + '</div>' : '') +
       '<div class="demo-body"></div></div>';
     s.querySelectorAll('.demo-tab').forEach((b, k) => b.addEventListener('click', () => play(n, k)));
@@ -1579,17 +1440,25 @@ document.querySelectorAll('.album').forEach(al => {
 <script>
 (function(){
   const glow = document.querySelector('.cursor-glow');
-  if (!glow || !matchMedia('(hover: hover)').matches) return;
+  if (!glow || !matchMedia('(hover: hover)').matches || getComputedStyle(glow).display === 'none') return;
+  const root = document.documentElement;
   let x = 0, y = 0, raf = 0;
   document.addEventListener('pointermove', e => {
     x = e.clientX; y = e.clientY;
     glow.style.opacity = 1;
+    root.style.setProperty('--glow-o', 1);
     if (!raf) raf = requestAnimationFrame(() => {
       glow.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%,-50%)';
+      document.querySelectorAll('.hero-arrow').forEach(el => {
+        const r = el.getBoundingClientRect(), k = el.offsetWidth / r.width || 1;
+        el.style.setProperty('--gx', (x - r.left) * k - el.clientLeft + 'px');
+        el.style.setProperty('--gy', (y - r.top) * k - el.clientTop + 'px');
+        el.style.setProperty('--gr', 332 * k + 'px');
+      });
       raf = 0;
     });
   });
-  document.documentElement.addEventListener('mouseleave', () => { glow.style.opacity = 0; });
+  root.addEventListener('mouseleave', () => { glow.style.opacity = 0; root.style.setProperty('--glow-o', 0); });
 })();
 </script>
 
