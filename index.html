@@ -1399,6 +1399,18 @@
     btn.addEventListener('click', () => go(Number(btn.dataset.dir)));
   });
 
+  // Con el foco en el carrusel, espacio pasa a la demo siguiente; en la última, scrollea normal
+  const stage = document.querySelector('.hero-stage');
+  let stageFocus = false;
+  document.addEventListener('pointerdown', e => { stageFocus = stage.contains(e.target); });
+  document.addEventListener('focusin', e => { stageFocus = stage.contains(e.target); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== ' ' || !stageFocus || cur === N - 1 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    e.preventDefault();
+    go(1);
+  });
+
   // Arrastrar con el mouse o el dedo también cambia de demo
   const vp = track.parentNode;
   let drag = null, dragged = false;
