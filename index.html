@@ -135,6 +135,7 @@
   .hero-carousel{
     position:absolute; inset:64px 0 28px 0;
     overflow:hidden;
+    touch-action: pan-y; user-select:none;
   }
   .hero-track{
     display:flex;
@@ -280,8 +281,8 @@
   .d-cam{ flex:1; min-height:0; position:relative; border-radius:14px; overflow:hidden; background:linear-gradient(180deg,#3a3430 0%,#3a3430 72%,#4a433e 72%); color:#fff; }
   .d-cam-h{ position:absolute; top:10px; left:12px; right:12px; display:flex; justify-content:space-between; font-size:12px; font-weight:600; }
   .d-cam-h .rec{ color:#ff5a4a; }
-  .d-shot{ position:absolute; top:32px; left:50%; height:calc(100% - 76px); aspect-ratio:3/5; transform:translateX(-50%); }
-  .d-shot img{ width:100%; height:100%; display:block; }
+  .d-shot{ position:absolute; top:32px; left:50%; height:calc(100% - 76px); aspect-ratio:9/16; transform:translateX(-50%); }
+  .d-shot img, .d-shot video{ width:100%; height:100%; display:block; }
   .d-shot svg{ position:absolute; inset:0; width:100%; height:100%; }
   .d-box.m{ border:0; }
   .d-box.m i{ background:var(--c); color:#111; }
@@ -1031,7 +1032,7 @@
   const epp = {
     tpl: left('Cámara en la línea',
       '<div class="d-cam"><div class="d-cam-h"><span><span class="rec">●</span> Cam 03 · Línea 2</span><span data-k="clk">09:41:02</span></div>' +
-      '<div class="d-shot" data-k="op"><img data-k="img" src="demos/epp-ok.jpg" alt=""><svg data-k="masks" viewBox="0 0 600 1000" preserveAspectRatio="none"></svg><div data-k="boxes"></div></div><div class="d-gate" data-k="gate" hidden></div></div>') +
+      '<div class="d-shot"><video data-k="vid" src="demos/epp-v3.mp4" muted playsinline preload="auto"></video></div><div class="d-gate" data-k="gate" hidden></div></div>') +
       '<div class="d-right">' +
         '<div class="d-ph"><div><b>Seguridad e higiene</b><small>Planta · hoy</small></div>' + pill('', 'Visión artificial') + '</div>' +
         '<div class="d-kpis">' +
@@ -1048,47 +1049,20 @@
           '<div><span>08:12 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado') + '</div>' +
         '</div>' +
       '</div>',
-    dur: 15500,
-    steps: ({ $ }) => {
-      // Coordenadas en px sobre las fotos de 600x1000 (detecciones de YOLOE)
-      // Con color y polígono: máscara de segmentación; sin ellos: caja roja de lo que falta
-      const box = (cls, x, y, w, h, t, c, pts) => {
-        if (pts) $('masks').insertAdjacentHTML('beforeend', '<polygon points="' + pts + '" fill="' + c + '" fill-opacity=".38" stroke="' + c + '" stroke-width="3"/>');
-        $('boxes').insertAdjacentHTML('beforeend',
-          '<div class="d-box ' + cls + '" style="left:' + x / 6 + '%;top:' + y / 10 + '%;width:' + w / 6 + '%;height:' + h / 10 + '%' + (c ? ';--c:' + c : '') + '"><i>' + t + '</i></div>');
-      };
+    dur: 22300,
+    steps: ({ $, off }) => {
       const gate = (cls, t) => { $('gate').className = 'd-gate ' + cls; $('gate').textContent = t; $('gate').hidden = false; };
       const log = (cls, html) => { $('log').insertAdjacentHTML('afterbegin', '<div class="' + cls + '">' + html + '</div>'); $('log').lastElementChild.remove(); };
-      const scan = (t0, img, boxes) => [
-        [t0, () => { $('img').src = img; $('op').hidden = false; }],
-        ...boxes.map((b, k) => [t0 + 600 + k * 400, () => box(...b)])
-      ];
+      // Eventos sincronizados con demos/epp-v3.mp4 (segmentación de YOLOE sobre el video)
       return [
-        ...scan(500, 'demos/epp-ok.jpg', [
-          ['m', 134, 58, 300, 906, 'persona 0.93', '#4f8cff', '259,65 241,73 229,84 220,100 214,120 214,134 236,193 236,214 217,232 178,251 159,284 146,336 147,388 135,504 135,542 143,565 152,573 164,578 172,578 181,566 184,547 187,552 193,583 203,695 204,805 209,866 176,917 172,929 175,934 187,938 203,935 250,909 258,900 263,856 266,684 268,671 272,665 274,639 281,611 280,603 284,599 287,611 299,633 306,663 315,683 317,700 322,708 332,816 346,916 359,933 364,946 372,954 394,958 407,952 410,939 405,915 389,884 387,746 382,722 365,707 355,690 346,620 352,598 366,580 378,548 382,556 390,558 403,553 412,562 421,565 429,560 431,554 429,496 426,489 420,424 411,382 409,344 393,290 372,247 361,235 327,223 309,212 302,203 300,190 310,141 310,114 302,93 290,78 271,66'],
-          ['side m', 211, 61, 101, 82, 'casco ✓', '#ffd23f', '212,113 212,134 221,142 232,127 253,120 285,121 297,128 303,136 309,133 312,124 312,115 301,84 275,62 252,62 234,73 221,89'],
-          ['lside m', 228, 130, 73, 29, 'anteojos ✓', '#22d3ee', '229,153 240,158 253,157 264,151 286,155 296,151 300,146 299,131 230,131'],
-          ['side m', 173, 218, 198, 288, 'chaleco ✓', '#3ccf6e', '365,233 323,220 309,219 295,236 284,262 282,275 266,306 259,301 234,223 205,238 184,245 177,251 173,259 173,305 186,333 193,364 188,382 185,420 189,495 192,503 240,503 255,498 264,490 283,499 365,502 370,472 369,399 355,334 356,307 368,242'],
-          ['lside m', 135, 486, 44, 97, 'guante ✓', '#ff6bd6', '141,487 136,495 136,556 150,574 171,582 178,573 179,542 169,511 169,489'],
-          ['side m', 382, 485, 51, 86, 'guante ✓', '#b57bff', '396,486 394,521 383,546 383,568 390,571 403,550 409,565 415,570 419,569 433,548 428,490 424,486']
-        ]),
-        [3500, () => { gate('g', '✓ Acceso habilitado'); $('clk').textContent = '09:41:05'; }],
-        [3900, () => { log('g', '<span>09:41 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado')); up($('ing'), '48'); }],
-        [6200, () => { $('boxes').innerHTML = ''; $('masks').innerHTML = ''; $('gate').hidden = true; $('clk').textContent = '09:43:16'; }],
-        ...scan(6200, 'demos/epp-falta.jpg', [
-          ['m', 134, 100, 280, 823, 'persona 0.93', '#4f8cff', '250,104 235,110 225,119 209,153 209,165 223,198 229,227 227,240 215,251 183,270 165,289 155,316 142,390 137,483 140,558 143,567 152,577 165,577 174,570 176,559 172,540 178,490 184,469 187,484 187,561 197,632 199,817 203,837 170,891 167,904 175,911 190,910 244,879 248,874 254,815 252,756 258,687 255,665 272,593 280,602 309,706 312,803 317,825 318,850 325,877 340,905 349,915 358,920 369,920 381,914 383,901 362,848 365,806 365,713 346,675 338,626 338,609 341,596 356,566 355,520 350,477 351,452 353,449 360,458 365,471 373,510 376,549 379,553 390,552 402,560 407,558 411,551 406,460 389,379 364,292 354,275 344,266 297,241 290,233 288,215 297,177 298,149 292,132 275,112 259,104'],
-          ['side m', 206, 101, 94, 75, 'casco ✓', '#ffd23f', '206,150 206,165 214,173 219,174 224,164 235,157 274,157 281,159 290,168 296,168 300,159 296,135 290,123 265,101 241,101 228,111 215,128'],
-          ['lside m', 224, 165, 64, 25, 'anteojos ✓', '#22d3ee', '224,165 224,183 235,189 245,189 259,180 266,186 277,186 288,178 288,170 284,165'],
-          ['side r', 165, 246, 200, 269, 'sin chaleco'],
-          ['lside r', 137, 533, 38, 42, 'sin guante'],
-          ['side r', 378, 524, 40, 40, 'sin guante']
-        ]),
-        [9500, () => gate('r', '✗ Falta: chaleco y guantes')],
-        [10000, () => {
-          log('r', '<span>09:43 · Cam 03 · Sin chaleco ni guantes</span>' + pill('r', 'Bloqueado'));
-          up($('ing'), '49'); up($('cum'), '96%', 'bad'); up($('ale'), '2', 'bad');
-        }],
-        [11200, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:43</small></span>')]
+        [0, () => { const v = $('vid'); v.muted = true; v.currentTime = off / 1000; v.play().catch(() => {}); }],
+        [1500, () => { gate('g', '✓ Acceso habilitado'); $('clk').textContent = '09:41:04'; }],
+        [2000, () => { log('g', '<span>09:41 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado')); up($('ing'), '48'); }],
+        [10300, () => { gate('r', '✗ Falta: guantes'); $('clk').textContent = '09:41:13'; }],
+        [10800, () => { log('r', '<span>09:41 · Cam 03 · Sin guantes</span>' + pill('r', 'Bloqueado')); up($('cum'), '96%', 'bad'); up($('ale'), '2', 'bad'); }],
+        [14300, () => { gate('r', '✗ Falta: casco y guantes'); $('clk').textContent = '09:41:17'; }],
+        [14800, () => { log('r', '<span>09:41 · Cam 03 · Sin casco ni guantes</span>' + pill('r', 'Bloqueado')); up($('ale'), '3', 'bad'); }],
+        [16000, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:41</small></span>')]
       ];
     }
   };
@@ -1423,6 +1397,42 @@
   document.querySelectorAll('.hero-arrow').forEach(btn => {
     btn.addEventListener('click', () => go(Number(btn.dataset.dir)));
   });
+
+  // Arrastrar con el mouse o el dedo también cambia de demo
+  const vp = track.parentNode;
+  let drag = null, dragged = false;
+  vp.addEventListener('dragstart', e => e.preventDefault());
+  vp.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    drag = { x: e.clientX, base: cur, w: vp.clientWidth };
+    dragged = false;
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!dragged) {
+      if (Math.abs(dx) < 6) return;
+      dragged = true;
+      // En los extremos se muestra la copia de la primera slide del otro lado
+      if (cur === 0 && dx > 0) { ghost.innerHTML = overview.innerHTML; drag.base = N; }
+      if (cur === N - 1) ghost.innerHTML = overview.innerHTML;
+    }
+    track.style.transition = 'none';
+    track.style.transform = 'translateX(calc(' + (-drag.base * 100) + '% + ' + dx + 'px))';
+  });
+  window.addEventListener('pointerup', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, d = drag;
+    drag = null;
+    if (!dragged) return;
+    track.style.transition = '';
+    if (Math.abs(dx) > Math.min(80, d.w * 0.15)) { go(dx < 0 ? 1 : -1); return; }
+    moveTo(d.base, true);
+    if (d.base !== cur) setTimeout(() => { if (!drag) moveTo(cur, false); }, 600);
+  });
+  window.addEventListener('pointercancel', () => { if (drag) { drag = null; moveTo(cur, true); } });
+  // Si se arrastró, no cuenta como click en lo que haya abajo
+  vp.addEventListener('click', e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
 
   const bar = document.querySelector('.hero-progress'), fill = bar.firstChild;
   (function tick(){
