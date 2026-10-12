@@ -562,7 +562,7 @@
   }
 
   /* Contacto: demo en 24 hs, seguida como un envío */
-  .contact{ background: var(--white); }
+  .contact{ background: var(--white); overflow-x:clip; }
   .contact-head{ margin-bottom:56px; }
   .contact-head h2{ font-size:clamp(2rem, 4.4vw, 3rem); line-height:1.08; letter-spacing:-0.02em; color:var(--ink); margin:14px 0 26px; }
   .contact-head h2 em{ font-style:normal; color:var(--accent); }
@@ -597,7 +597,8 @@
     font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:0.78rem;
     color:var(--ink);
-    transform:rotate(-20deg);
+    --rot:-20deg;
+    transform:rotate(var(--rot));
   }
   .ticket::before{
     content:""; position:absolute; top:-14px; left:50%;
@@ -619,12 +620,22 @@
     font-size:0.72rem; font-weight:800; letter-spacing:0.08em;
     transform:rotate(-12deg);
   }
+  /* El sticker entra desde la derecha y se pega */
+  @media (prefers-reduced-motion: no-preference){
+    .track-wrap .ticket{ opacity:0; }
+    .track-wrap.in .ticket{ animation: ticket-in .9s cubic-bezier(.2,.8,.3,1) .5s both; }
+  }
+  @keyframes ticket-in{
+    0%{ opacity:1; transform:translateX(70vw) rotate(25deg); }
+    70%{ opacity:1; transform:translateX(0) rotate(var(--rot)) scale(1.06); }
+    100%{ opacity:1; transform:rotate(var(--rot)) scale(1); }
+  }
   @media (max-width: 1100px){
     .ticket{ right:-10px; }
   }
   @media (max-width: 900px){
     .track-wrap{ display:flex; flex-direction:column-reverse; }
-    .ticket{ position:relative; right:auto; top:auto; align-self:center; margin:48px 0 10px; transform:rotate(-8deg); }
+    .ticket{ position:relative; right:auto; top:auto; align-self:center; margin:48px 0 10px; --rot:-8deg; }
     .track-top{ padding-right:0; }
     .track-box{ padding:26px 22px 28px; }
     .track{ grid-template-columns:1fr; gap:22px; }
