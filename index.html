@@ -581,6 +581,7 @@
   .track::before{ right:0; background:#f1ebe5; }
   .track::after{ width:62%; background:var(--accent); }
   .track-step{ position:relative; z-index:1; }
+  .track-shine{ display:none; }
   .track-step i{ display:block; width:28px; height:28px; margin-bottom:18px; border-radius:50%; border:6px solid #f1ebe5; background:var(--white); }
   .track-step.on i{ border-color:var(--accent); background:var(--accent); }
   .track-step.cur i{ background:var(--white); }
@@ -635,9 +636,22 @@
     .track-wrap.in .track-step:nth-child(1) i{ animation-delay:.2s; }
     .track-wrap.in .track-step:nth-child(2) i{ animation-delay:.68s; }
     .track-wrap.in .track-step:nth-child(3) i{ animation-delay:1.17s; }
+    .track-shine{
+      display:block; position:absolute; z-index:2; left:0; top:0;
+      width:62%; height:28px;
+      pointer-events:none;
+      mix-blend-mode:screen;
+      background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3), transparent 70%) no-repeat;
+      background-size:56px 100%;
+      background-position:-56px 0;
+    }
+    .track-wrap.in .track-shine{ animation: track-shine-x 7s ease-in-out 1.6s infinite; }
   }
   @keyframes track-fill-x{ to{ clip-path:inset(0 0 0 0); } }
   @keyframes track-fill-y{ from{ clip-path:inset(0 0 100% 0); } to{ clip-path:inset(0 0 0 0); } }
+  /* Brillo que recorre la parte naranja, nodos incluidos */
+  @keyframes track-shine-x{ 0%{ background-position:-56px 0; } 70%, 100%{ background-position:calc(100% + 56px) 0; } }
+  @keyframes track-shine-y{ 0%{ background-position:0 -56px; } 70%, 100%{ background-position:0 calc(100% + 56px); } }
   @keyframes step-on{ to{ border-color:var(--accent); background:var(--accent); } }
   @keyframes step-cur{ to{ border-color:var(--accent); background:var(--white); } }
   @keyframes ticket-in{
@@ -658,6 +672,8 @@
     .track::before{ right:auto; bottom:0; }
     .track::after{ height:62%; }
     .track-wrap.in .track::after{ animation-name: track-fill-y; }
+    .track-shine{ width:28px; height:62%; background-image:linear-gradient(150deg, transparent 30%, rgba(255,255,255,0.3), transparent 70%); background-size:100% 56px; background-position:0 -56px; }
+    .track-wrap.in .track-shine{ animation-name: track-shine-y; }
     .track-step{ display:grid; grid-template-columns:28px 1fr; column-gap:16px; }
     .track-step i{ grid-row:span 2; margin:0; }
   }
@@ -956,6 +972,7 @@
             <div class="track-step on"><i></i><b>Charlamos 20 minutos</b><small>Lunes 15:00</small></div>
             <div class="track-step on cur"><i></i><b>Armamos tu demo</b><small>Lunes 15:24</small></div>
             <div class="track-step"><i></i><b>La tenés en pantalla</b><small>Martes 15:10</small></div>
+            <span class="track-shine" aria-hidden="true"></span>
           </div>
         </div>
       </div>
