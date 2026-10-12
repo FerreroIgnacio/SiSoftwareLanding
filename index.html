@@ -1004,12 +1004,12 @@
           '<tr><td>#2084</td><td>Taller Ruiz</td><td>2 matrices · acero D2</td><td class="d-wide">Teléfono</td><td class="num">US$ 2.300</td><td>' + pill('g', 'Entregado') + '</td></tr>' +
         '</tbody></table>' +
       '</div>',
-    dur: 37500,
+    dur: 35500,
     steps: ({ $, off }) => [
       // off: ms ya transcurridos (Infinity en la grilla de inicio: muestra el último cuadro sin reproducir)
       [0, () => {
         const v = $('vid');
-        if (off === Infinity) { v.currentTime = 36; return; }
+        if (off === Infinity) { v.currentTime = 33.5; return; }
         v.currentTime = (off || 0) / 1000;
         v.play().catch(() => {});
       }],
@@ -1019,12 +1019,12 @@
         $('rows').lastElementChild.remove();
         $('badge').hidden = false;
       }],
-      [11500, () => { $('det').textContent = '8 SocketB + 86 laminaciones · 2 planos'; $('est').innerHTML = pill('b', 'Planos recibidos'); }],
-      [15000, () => { $('est').innerHTML = pill('b', 'Validando piezas'); }],
-      [24000, () => { $('det').textContent = '8 SocketB + 86 laminaciones · martes'; $('est').innerHTML = pill('b', 'Cotizando'); }],
-      [30000, () => { up($('tot'), 'US$ 864'); $('est').innerHTML = pill('o', 'Esperando OK'); }],
-      [32500, () => { $('est').innerHTML = pill('g', 'Confirmado'); }],
-      [33300, () => { up($('ped'), '8'); up($('fac'), 'US$ 5.984'); up($('bot'), '63%'); }]
+      [12200, () => { $('det').textContent = '8 SocketB + 86 laminaciones · 2 planos'; $('est').innerHTML = pill('b', 'Planos recibidos'); }],
+      [13700, () => { $('est').innerHTML = pill('b', 'Validando piezas'); }],
+      [21000, () => { $('det').textContent = '8 SocketB + 86 laminaciones · martes'; $('est').innerHTML = pill('b', 'Cotizando'); }],
+      [22600, () => { up($('tot'), 'US$ 864'); $('est').innerHTML = pill('o', 'Esperando OK'); }],
+      [27700, () => { $('est').innerHTML = pill('g', 'Confirmado'); }],
+      [29400, () => { up($('ped'), '8'); up($('fac'), 'US$ 5.984'); up($('bot'), '63%'); }]
     ]
   };
 
@@ -1032,7 +1032,7 @@
   const epp = {
     tpl: left('Cámara en la línea',
       '<div class="d-cam"><div class="d-cam-h"><span><span class="rec">●</span> Cam 03 · Línea 2</span><span data-k="clk">09:41:02</span></div>' +
-      '<div class="d-shot"><video data-k="vid" src="demos/epp-v3.mp4" muted playsinline preload="auto"></video></div><div class="d-gate" data-k="gate" hidden></div></div>') +
+      '<div class="d-shot"><video data-k="vid" src="demos/epp-v4.mp4" muted playsinline preload="auto"></video></div><div class="d-gate" data-k="gate" hidden></div></div>') +
       '<div class="d-right">' +
         '<div class="d-ph"><div><b>Seguridad e higiene</b><small>Planta · hoy</small></div>' + pill('', 'Visión artificial') + '</div>' +
         '<div class="d-kpis">' +
@@ -1049,20 +1049,21 @@
           '<div><span>08:12 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado') + '</div>' +
         '</div>' +
       '</div>',
-    dur: 22300,
+    dur: 22500,
     steps: ({ $, off }) => {
       const gate = (cls, t) => { $('gate').className = 'd-gate ' + cls; $('gate').textContent = t; $('gate').hidden = false; };
       const log = (cls, html) => { $('log').insertAdjacentHTML('afterbegin', '<div class="' + cls + '">' + html + '</div>'); $('log').lastElementChild.remove(); };
-      // Eventos sincronizados con demos/epp-v3.mp4 (segmentación de YOLOE sobre el video)
+      // Eventos sincronizados con demos/epp-v4.mp4 (SAM3: la persona pasa de verde a amarillo, naranja y rojo)
       return [
         [0, () => { const v = $('vid'); v.muted = true; v.currentTime = off / 1000; v.play().catch(() => {}); }],
         [1500, () => { gate('g', '✓ Acceso habilitado'); $('clk').textContent = '09:41:04'; }],
         [2000, () => { log('g', '<span>09:41 · Cam 03 · EPP completo</span>' + pill('g', 'Habilitado')); up($('ing'), '48'); }],
-        [10300, () => { gate('r', '✗ Falta: guantes'); $('clk').textContent = '09:41:13'; }],
-        [10800, () => { log('r', '<span>09:41 · Cam 03 · Sin guantes</span>' + pill('r', 'Bloqueado')); up($('cum'), '96%', 'bad'); up($('ale'), '2', 'bad'); }],
-        [14300, () => { gate('r', '✗ Falta: casco y guantes'); $('clk').textContent = '09:41:17'; }],
-        [14800, () => { log('r', '<span>09:41 · Cam 03 · Sin casco ni guantes</span>' + pill('r', 'Bloqueado')); up($('ale'), '3', 'bad'); }],
-        [16000, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:41</small></span>')]
+        [10150, () => { gate('r', '✗ Falta: guante'); $('clk').textContent = '09:41:13'; }],
+        [10650, () => { log('r', '<span>09:41 · Cam 03 · Sin guante</span>' + pill('r', 'Bloqueado')); up($('cum'), '96%', 'bad'); up($('ale'), '2', 'bad'); }],
+        [12900, () => { gate('r', '✗ Falta: guantes'); $('clk').textContent = '09:41:16'; }],
+        [14250, () => { gate('r', '✗ Falta: casco y guantes'); $('clk').textContent = '09:41:17'; }],
+        [14750, () => { log('r', '<span>09:41 · Cam 03 · Sin casco ni guantes</span>' + pill('r', 'Bloqueado')); up($('ale'), '3', 'bad'); }],
+        [15900, () => log('wa', '<span><b>Aviso enviado al supervisor por WhatsApp</b><br><small>Carlos B. · Línea 2 · 09:41</small></span>')]
       ];
     }
   };
