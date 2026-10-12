@@ -965,7 +965,7 @@
         <div class="track-box">
           <div class="track-top">
             <div>Pedido<b>Demo · Distribuidora del Sur</b></div>
-            <div class="eta">Llega<b>Mañana, 15:10</b></div>
+            <div class="eta">Llega<b id="eta">Mañana, 15:10</b></div>
           </div>
           <div class="track">
             <div class="track-step on"><i></i><b>Nos escribís</b><small>Lunes 10:14</small></div>
@@ -1001,6 +1001,14 @@
     });
   }, { threshold: 0.15 });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // "Llega mañana" a la misma hora que marca la máquina, actualizado minuto a minuto
+  const eta = document.getElementById('eta');
+  function tickEta(){
+    eta.textContent = 'Mañana, ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    setTimeout(tickEta, 60000 - Date.now() % 60000);
+  }
+  tickEta();
 </script>
 
 <script>
@@ -1394,7 +1402,7 @@
 
   let timers = [], run = 0, cur = 0, t0 = 0, total = 1;
   // Duración de cada slide y dónde arranca cada escena, para la línea de progreso
-  const starts = n => n === 0 ? [0, 7000] : DEMOS[n - 1].scenes.reduce((a, sc) => a.concat(a[a.length - 1] + sc.dur), [0]);
+  const starts = n => n === 0 ? [0, 18000] : DEMOS[n - 1].scenes.reduce((a, sc) => a.concat(a[a.length - 1] + sc.dur), [0]);
   function stop(){ timers.forEach(clearTimeout); timers = []; run++; }
   // off: ms ya transcurridos dentro de la escena (para saltar a un momento exacto)
   function play(n, k, off){
@@ -1410,7 +1418,7 @@
         const sc = DEMOS[i].scenes;
         (function loop(j){ runScene(body, sc[j], 0, id, () => loop((j + 1) % sc.length)); })(0);
       });
-      timers.push(setTimeout(() => go(1), 7000 - off));
+      timers.push(setTimeout(() => go(1), 18000 - off));
       return;
     }
     const d = DEMOS[n - 1], scene = d.scenes[k], body = slides[n].querySelector('.demo-body');
@@ -1443,7 +1451,9 @@
   ghost.setAttribute('aria-hidden', 'true');
   track.appendChild(ghost);
   const N = slides.length;
+  let atGhost = false;
   const moveTo = (i, anim) => {
+    atGhost = i === N;
     track.style.transition = anim ? '' : 'none';
     track.style.transform = 'translateX(' + (-i * 100) + '%)';
     if (!anim) { void track.offsetWidth; track.style.transition = ''; }
@@ -1452,14 +1462,14 @@
     const next = to === undefined ? (cur + dir + N) % N : to;
     const fwdWrap = to === undefined && cur === N - 1 && next === 0;
     const backWrap = to === undefined && cur === 0 && next === N - 1;
+    // Si quedó parado en la copia (otro cambio llegó antes de volver a la primera), vuelve sin animar
+    if (atGhost) moveTo(0, false);
     if (backWrap) { ghost.innerHTML = overview.innerHTML; moveTo(N, false); }
-    const slide = to === undefined || Math.abs(next - cur) <= 1;
     cur = next;
     if (fwdWrap) {
       moveTo(N, true);
-      const id = run + 1;
-      setTimeout(() => { if (id === run && cur === 0) moveTo(0, false); }, 600);
-    } else moveTo(cur, slide);
+      setTimeout(() => { if (atGhost && cur === 0) moveTo(0, false); }, 600);
+    } else moveTo(cur, true);
     play(cur, 0);
     if (fwdWrap) ghost.innerHTML = overview.innerHTML;
   }
@@ -1467,13 +1477,16 @@
     btn.addEventListener('click', () => go(Number(btn.dataset.dir)));
   });
 
-  // Con el foco en el carrusel, espacio pasa a la demo siguiente; en la última, scrollea normal
+  // Con al menos el 20% del carrusel en pantalla, espacio pasa a la demo siguiente (de la última vuelve a la primera)
   const stage = document.querySelector('.hero-stage');
-  let stageFocus = false;
-  document.addEventListener('pointerdown', e => { stageFocus = stage.contains(e.target); });
-  document.addEventListener('focusin', e => { stageFocus = stage.contains(e.target); });
+  // Si el carrusel es más alto que la pantalla, cuenta contra el alto de la pantalla
+  function stageVisible(){
+    const r = stage.getBoundingClientRect();
+    const seen = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+    return seen >= 0.2 * Math.min(r.height, innerHeight);
+  }
   document.addEventListener('keydown', e => {
-    if (e.key !== ' ' || !stageFocus || cur === N - 1 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !stageVisible()) return;
     if (e.target.closest('input, textarea, select, [contenteditable]')) return;
     e.preventDefault();
     go(1);
@@ -1485,6 +1498,7 @@
   vp.addEventListener('dragstart', e => e.preventDefault());
   vp.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
+    if (atGhost) moveTo(0, false);
     drag = { x: e.clientX, base: cur, w: vp.clientWidth };
     dragged = false;
   });
