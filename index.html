@@ -625,6 +625,21 @@
     .track-wrap .ticket{ opacity:0; }
     .track-wrap.in .ticket{ animation: ticket-in .9s cubic-bezier(.2,.8,.3,1) .5s both; }
   }
+  /* La línea naranja se llena y va encendiendo cada paso */
+  @media (prefers-reduced-motion: no-preference){
+    .track-wrap .track::after{ clip-path:inset(0 100% 0 0); }
+    .track-wrap.in .track::after{ animation: track-fill-x 1.2s linear .2s both; }
+    .track-wrap .track-step.on i{ border-color:#f1ebe5; background:var(--white); }
+    .track-wrap.in .track-step.on i{ animation: step-on .25s ease both; }
+    .track-wrap.in .track-step.cur i{ animation-name: step-cur; }
+    .track-wrap.in .track-step:nth-child(1) i{ animation-delay:.2s; }
+    .track-wrap.in .track-step:nth-child(2) i{ animation-delay:.68s; }
+    .track-wrap.in .track-step:nth-child(3) i{ animation-delay:1.17s; }
+  }
+  @keyframes track-fill-x{ to{ clip-path:inset(0 0 0 0); } }
+  @keyframes track-fill-y{ from{ clip-path:inset(0 0 100% 0); } to{ clip-path:inset(0 0 0 0); } }
+  @keyframes step-on{ to{ border-color:var(--accent); background:var(--accent); } }
+  @keyframes step-cur{ to{ border-color:var(--accent); background:var(--white); } }
   @keyframes ticket-in{
     0%{ opacity:1; transform:translateX(70vw) rotate(25deg); }
     70%{ opacity:1; transform:translateX(0) rotate(var(--rot)) scale(1.06); }
@@ -642,6 +657,7 @@
     .track::before, .track::after{ top:0; left:8px; width:12px; height:auto; }
     .track::before{ right:auto; bottom:0; }
     .track::after{ height:62%; }
+    .track-wrap.in .track::after{ animation-name: track-fill-y; }
     .track-step{ display:grid; grid-template-columns:28px 1fr; column-gap:16px; }
     .track-step i{ grid-row:span 2; margin:0; }
   }
