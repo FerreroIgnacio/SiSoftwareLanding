@@ -1303,7 +1303,34 @@
   let timers = [], run = 0, cur = 0, t0 = 0, total = 1, onScreen = true;
   // Duración de cada slide y dónde arranca cada escena, para la línea de progreso
   const starts = n => n === 0 ? [0, 18000] : DEMOS[n - 1].scenes.reduce((a, sc) => a.concat(a[a.length - 1] + sc.dur), [0]);
-  function stop(){ timers.forEach(clearTimeout); timers = []; run++; }
+  // Reloj del carrusel: se congela mientras mantenés apretado (clock() no avanza y los timers se reprograman al soltar)
+  let frozenAt = 0, lag = 0, frozenVids = [];
+  const clock = () => (frozenAt || performance.now()) - lag;
+  function later(fn, ms){
+    const t = { due: clock() + ms };
+    t.fn = () => { const i = timers.indexOf(t); if (i >= 0) timers.splice(i, 1); fn(); };
+    t.id = setTimeout(t.fn, ms);
+    timers.push(t);
+  }
+  function freeze(){
+    if (frozenAt) return;
+    frozenAt = performance.now();
+    timers.forEach(t => clearTimeout(t.id));
+    frozenVids = [...track.querySelectorAll('video')].filter(v => !v.paused);
+    frozenVids.forEach(v => v.pause());
+  }
+  function unfreeze(){
+    if (!frozenAt) return;
+    lag += performance.now() - frozenAt;
+    frozenAt = 0;
+    timers.forEach(t => { t.id = setTimeout(t.fn, Math.max(0, t.due - clock())); });
+    frozenVids.forEach(v => v.play().catch(() => {}));
+    frozenVids = [];
+  }
+  function stop(){
+    timers.forEach(t => clearTimeout(t.id)); timers = []; run++;
+    if (frozenAt) { lag += performance.now() - frozenAt; frozenAt = 0; frozenVids = []; }
+  }
   // off: ms ya transcurridos dentro de la escena (para saltar a un momento exacto)
   function play(n, k, off){
     stop();
@@ -1312,7 +1339,7 @@
     off = off || 0;
     const st = starts(n);
     total = st[st.length - 1];
-    t0 = performance.now() - st[k] - off;
+    t0 = clock() - st[k] - off;
     const id = run;
     if (n === 0) {
       // Cada cuadro de la grilla reproduce su demo como un video, en loop
@@ -1320,7 +1347,7 @@
         const sc = DEMOS[i].scenes;
         (function loop(j){ runScene(body, sc[j], 0, id, () => loop((j + 1) % sc.length)); })(0);
       });
-      timers.push(setTimeout(auto, 18000 - off));
+      later(auto, 18000 - off);
       return;
     }
     const d = DEMOS[n - 1], scene = d.scenes[k], body = slides[n].querySelector('.demo-body');
@@ -1342,22 +1369,22 @@
     body.innerHTML = scene.tpl;
     keepVideos(body);
     const $ = key => body.querySelector('[data-k="' + key + '"]');
-    const start = performance.now() - off;
+    const start = clock() - off;
     let at = 0;
     const anim = (ms, fn) => {
       const a0 = start + at;
-      (function f(now){
+      (function f(){
         if (id !== run) return;
-        const p = Math.max(0, Math.min(1, (now - a0) / ms));
+        const p = Math.max(0, Math.min(1, (clock() - a0) / ms));
         fn(p);
         if (p < 1) requestAnimationFrame(f);
-      })(performance.now());
+      })();
     };
     scene.steps({ $, anim, off }).sort((a, b) => a[0] - b[0]).forEach(([t, fn]) => {
       const exec = () => { at = t; fn(); };
-      if (t < off) exec(); else timers.push(setTimeout(exec, t - off));
+      if (t < off) exec(); else later(exec, t - off);
     });
-    timers.push(setTimeout(onEnd, scene.dur - off));
+    later(onEnd, scene.dur - off);
   }
   // Copia de la primera slide al final, para pasar de la última a la primera deslizando
   const ghost = document.createElement('div');
@@ -1393,8 +1420,8 @@
     if (fwdWrap) { ghost.appendChild(canvas0); moveTo(N, true); }
     else moveTo(cur, true);
     stop();
-    t0 = performance.now(); total = Infinity;
-    timers.push(setTimeout(() => { if (atGhost) moveTo(0, false); home(); play(cur, 0); }, 600));
+    t0 = clock(); total = Infinity;
+    later(() => { if (atGhost) moveTo(0, false); home(); play(cur, 0); }, 600);
   }
 
   document.querySelectorAll('.hero-arrow').forEach(btn => {
@@ -1449,7 +1476,7 @@
   const vp = track.parentNode;
   // El carrusel se mueve con transform; si el foco lo desplaza por scroll, se vuelve a 0
   vp.addEventListener('scroll', () => { vp.scrollLeft = 0; });
-  let drag = null, dragged = false;
+  let drag = null, dragged = false, held = false, holdTimer = 0;
   vp.addEventListener('dragstart', e => e.preventDefault());
   vp.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
@@ -1457,6 +1484,9 @@
     home();
     drag = { x: e.clientX, base: cur, w: vp.clientWidth };
     dragged = false;
+    // Mantener apretado 250 ms sin arrastrar congela la slide (barra, animaciones y video) hasta soltar
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { if (drag && !dragged) { held = true; freeze(); } }, 250);
   });
   window.addEventListener('pointermove', e => {
     if (!drag) return;
@@ -1464,6 +1494,8 @@
     if (!dragged) {
       if (Math.abs(dx) < 6) return;
       dragged = true;
+      clearTimeout(holdTimer);
+      if (held) { held = false; unfreeze(); }
       // En los extremos se muestra la copia de la primera slide del otro lado
       if (cur === 0 && dx > 0) { ghost.appendChild(canvas0); drag.base = N; }
       if (cur === N - 1) ghost.appendChild(canvas0);
@@ -1475,6 +1507,9 @@
     if (!drag) return;
     const dx = e.clientX - drag.x, d = drag;
     drag = null;
+    clearTimeout(holdTimer);
+    // Si estaba congelada, soltar solo la descongela (no cuenta como toque ni click)
+    if (held) { held = false; dragged = true; unfreeze(); return; }
     // En el celular, tocar el carrusel (fuera de botones y pestañas) pasa a la demo siguiente
     if (!dragged) { if (e.pointerType === 'touch' && !e.target.closest('button, .ov-tile')) go(1); return; }
     track.style.transition = '';
@@ -1482,13 +1517,13 @@
     moveTo(d.base, true);
     setTimeout(() => { if (!drag) { if (d.base !== cur) moveTo(cur, false); home(); } }, 600);
   });
-  window.addEventListener('pointercancel', () => { if (drag) { drag = null; moveTo(cur, true); setTimeout(() => { if (!drag) home(); }, 600); } });
+  window.addEventListener('pointercancel', () => { clearTimeout(holdTimer); if (held) { held = false; unfreeze(); } if (drag) { drag = null; moveTo(cur, true); setTimeout(() => { if (!drag) home(); }, 600); } });
   // Si se arrastró, no cuenta como click en lo que haya abajo
   vp.addEventListener('click', e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
 
   const bar = document.querySelector('.hero-progress'), fill = bar.firstChild;
   (function tick(){
-    if (onScreen) fill.style.width = Math.min(100, (performance.now() - t0) / total * 100) + '%';
+    if (onScreen) fill.style.width = Math.min(100, (clock() - t0) / total * 100) + '%';
     requestAnimationFrame(tick);
   })();
   bar.addEventListener('click', e => {
