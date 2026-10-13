@@ -731,7 +731,8 @@
     .track::before, .track::after{ top:9px; height:4px; left:12.5%; }
     .track::before{ right:12.5%; }
     .track::after{ width:60.5%; }
-    .track-shine{ left:12.5%; width:60.5%; height:22px; }
+    /* Arranca en el borde izquierdo de la primera pelota (no en su centro, donde empieza la línea) */
+    .track-shine{ left:calc(12.5% - 15px); width:calc(60.5% + 15px); height:22px; }
     .track-step{ text-align:center; }
     .track-step i{ position:relative; width:22px; height:22px; margin:0 auto 10px; border-width:3px; }
     .track-step.on:not(.cur) i::after{ content:""; position:absolute; left:5px; top:2px; width:5px; height:9px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg); }
