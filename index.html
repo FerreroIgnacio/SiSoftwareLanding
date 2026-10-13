@@ -140,11 +140,15 @@
     z-index:1;
     overflow:hidden;
     touch-action: pan-y; user-select:none;
+    /* En celular, al tocar una demo no se resalta ni abre el menú de guardar imagen/video */
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
   }
   .hero-track{
     display:flex;
     height:100%;
     transition: transform .6s ease;
+    will-change: transform;
   }
   .hero-slide{
     flex:0 0 100%;
@@ -250,6 +254,9 @@
   .tall .d-table th, .tall .d-table td{ padding:5px 4px; }
   .tall .d-table th{ font-size:10px; }
   .tall .d-wide{ display:none; }
+  /* En vertical la tabla tiene que entrar en el panel: el texto puede ir en dos líneas */
+  .tall .d-table td{ font-size:12px; white-space:normal; }
+  .tall .d-table td.num{ white-space:nowrap; }
   .d-pill{ display:inline-block; border-radius:999px; padding:2px 9px; font-size:12px; font-weight:600; background:#efebe7; color:var(--muted); white-space:nowrap; }
   .d-pill.o{ background:#ffe2c7; color:var(--accent-dark); }
   .d-pill.g{ background:#dff3e4; color:#1e7a3a; }
@@ -514,6 +521,10 @@
     display:grid;
     padding:4px 14% 12% 4px;
     cursor:pointer;
+    /* En celular, al tocar para cambiar de foto no se resalta ni abre el menú de guardar imagen */
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+    user-select:none;
   }
   .about-art.album img{
     grid-area:1 / 1;
@@ -774,12 +785,12 @@
   <section class="hero">
     <h1 class="sr-only">¿Necesitás soluciones? Si — Si Soluciones en Software</h1>
     <div class="hero-stage">
+      <button class="hero-arrow" type="button" data-dir="-1" aria-label="Demo anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="hero-arrow" type="button" data-dir="1" aria-label="Demo siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
       <div class="hero-carousel">
         <div class="hero-track"></div>
       </div>
       <div class="hero-progress" role="slider" aria-label="Momento de la demo"><span></span></div>
-      <button class="hero-arrow" type="button" tabindex="-1" data-dir="-1" aria-label="Demo anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
-      <button class="hero-arrow" type="button" tabindex="-1" data-dir="1" aria-label="Demo siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
     </div>
   </section>
 
@@ -1279,13 +1290,15 @@
     return s;
   }));
 
-  let timers = [], run = 0, cur = 0, t0 = 0, total = 1;
+  let timers = [], run = 0, cur = 0, t0 = 0, total = 1, onScreen = true;
   // Duración de cada slide y dónde arranca cada escena, para la línea de progreso
   const starts = n => n === 0 ? [0, 18000] : DEMOS[n - 1].scenes.reduce((a, sc) => a.concat(a[a.length - 1] + sc.dur), [0]);
   function stop(){ timers.forEach(clearTimeout); timers = []; run++; }
   // off: ms ya transcurridos dentro de la escena (para saltar a un momento exacto)
   function play(n, k, off){
     stop();
+    // Solo decodifican video los de la slide visible
+    track.querySelectorAll('video').forEach(v => { if (!slides[n].contains(v) && !v.paused) { v.pause(); v.currentTime = 0; } });
     off = off || 0;
     const st = starts(n);
     total = st[st.length - 1];
@@ -1304,8 +1317,20 @@
     slides[n].querySelectorAll('.demo-tab').forEach((b, j) => b.classList.toggle('on', j === k));
     runScene(body, scene, off, id, () => (k + 1 < d.scenes.length ? play(n, k + 1) : auto()));
   }
+  // Cada cuadro guarda sus <video> ya cargados y los reusa al volver a la escena: sin esto el
+  // innerHTML crea videos nuevos y se ve negro hasta que bajan y decodifican
+  const vids = new WeakMap();
+  function keepVideos(body){
+    let m = vids.get(body);
+    if (!m) vids.set(body, m = {});
+    body.querySelectorAll('video').forEach(v => {
+      const k = v.getAttribute('src') + '|' + v.dataset.k;
+      if (m[k]) v.replaceWith(m[k]); else m[k] = v;
+    });
+  }
   function runScene(body, scene, off, id, onEnd){
     body.innerHTML = scene.tpl;
+    keepVideos(body);
     const $ = key => body.querySelector('[data-k="' + key + '"]');
     const start = performance.now() - off;
     let at = 0;
@@ -1330,6 +1355,10 @@
   ghost.setAttribute('aria-hidden', 'true');
   track.appendChild(ghost);
   const N = slides.length;
+  // Para pasar de la última a la primera (y al revés) deslizando, la grilla de inicio se muda a la
+  // copia del final mientras dura la transición: copiarla con innerHTML crearía videos nuevos (negros)
+  const canvas0 = overview.firstChild;
+  const home = () => { if (canvas0.parentNode !== overview) overview.appendChild(canvas0); };
   let atGhost = false;
   ghost.inert = true;
   // Solo la slide visible es enfocable: con Tab no se entra a las ocultas
@@ -1347,16 +1376,17 @@
     const backWrap = to === undefined && cur === 0 && next === N - 1;
     // Si quedó parado en la copia (otro cambio llegó antes de volver a la primera), vuelve sin animar
     if (atGhost) moveTo(0, false);
-    if (backWrap) { ghost.innerHTML = overview.innerHTML; moveTo(N, false); }
+    home();
+    if (backWrap) { ghost.appendChild(canvas0); moveTo(N, false); }
     cur = next;
     setInert();
-    if (fwdWrap) {
-      moveTo(N, true);
-      setTimeout(() => { if (atGhost && cur === 0) moveTo(0, false); }, 600);
-    } else moveTo(cur, true);
-    play(cur, 0);
-    if (fwdWrap) ghost.innerHTML = overview.innerHTML;
+    if (fwdWrap) { ghost.appendChild(canvas0); moveTo(N, true); }
+    else moveTo(cur, true);
+    stop();
+    t0 = performance.now(); total = Infinity;
+    timers.push(setTimeout(() => { if (atGhost) moveTo(0, false); home(); play(cur, 0); }, 600));
   }
+
   document.querySelectorAll('.hero-arrow').forEach(btn => {
     btn.addEventListener('click', () => go(Number(btn.dataset.dir)));
   });
@@ -1392,14 +1422,15 @@
   // Entrando con Tab desde arriba arranca en la primera slide; con Shift+Tab desde abajo, en la última
   stage.addEventListener('focusin', e => {
     const from = e.relatedTarget;
-    if (!from || stage.contains(from)) return;
-    const fromAbove = from.compareDocumentPosition(stage) & Node.DOCUMENT_POSITION_FOLLOWING;
+    // Desde las flechas sigue en la slide que elegiste
+    if (!from || stage.contains(from) || !track.contains(e.target)) return;
+    const fromAbove = from.compareDocumentPosition(track) & Node.DOCUMENT_POSITION_FOLLOWING;
     if (fromAbove && e.target !== q(0)) focusIn(0, q);
     else if (!fromAbove && e.target !== box(N - 1)) focusIn(N - 1, box);
   });
   document.addEventListener('keydown', e => {
     if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !stageVisible()) return;
-    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (e.target.closest('input, textarea, select, button, [contenteditable]')) return;
     e.preventDefault();
     go(1);
   });
@@ -1413,6 +1444,7 @@
   vp.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     if (atGhost) moveTo(0, false);
+    home();
     drag = { x: e.clientX, base: cur, w: vp.clientWidth };
     dragged = false;
   });
@@ -1423,8 +1455,8 @@
       if (Math.abs(dx) < 6) return;
       dragged = true;
       // En los extremos se muestra la copia de la primera slide del otro lado
-      if (cur === 0 && dx > 0) { ghost.innerHTML = overview.innerHTML; drag.base = N; }
-      if (cur === N - 1) ghost.innerHTML = overview.innerHTML;
+      if (cur === 0 && dx > 0) { ghost.appendChild(canvas0); drag.base = N; }
+      if (cur === N - 1) ghost.appendChild(canvas0);
     }
     track.style.transition = 'none';
     track.style.transform = 'translateX(calc(' + (-drag.base * 100) + '% + ' + dx + 'px))';
@@ -1438,15 +1470,15 @@
     track.style.transition = '';
     if (Math.abs(dx) > Math.min(80, d.w * 0.15)) { go(dx < 0 ? 1 : -1); return; }
     moveTo(d.base, true);
-    if (d.base !== cur) setTimeout(() => { if (!drag) moveTo(cur, false); }, 600);
+    setTimeout(() => { if (!drag) { if (d.base !== cur) moveTo(cur, false); home(); } }, 600);
   });
-  window.addEventListener('pointercancel', () => { if (drag) { drag = null; moveTo(cur, true); } });
+  window.addEventListener('pointercancel', () => { if (drag) { drag = null; moveTo(cur, true); setTimeout(() => { if (!drag) home(); }, 600); } });
   // Si se arrastró, no cuenta como click en lo que haya abajo
   vp.addEventListener('click', e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
 
   const bar = document.querySelector('.hero-progress'), fill = bar.firstChild;
   (function tick(){
-    fill.style.width = Math.min(100, (performance.now() - t0) / total * 100) + '%';
+    if (onScreen) fill.style.width = Math.min(100, (performance.now() - t0) / total * 100) + '%';
     requestAnimationFrame(tick);
   })();
   bar.addEventListener('click', e => {
@@ -1467,14 +1499,37 @@
     });
     const W = tall ? 392 : 1112, H = tall ? 800 : 620;
     overview.querySelectorAll('.ov-prev').forEach(pv => {
-      const ps = Math.min(pv.clientWidth / W, pv.clientHeight / H), b = pv.firstChild;
+      // Margen de 10px para que nada quede pegado a las esquinas redondeadas del cuadro
+      const ps = Math.min((pv.clientWidth - 20) / W, (pv.clientHeight - 20) / H), b = pv.firstChild;
       b.style.width = W + 'px';
       b.style.height = H + 'px';
       b.style.transform = 'translate(' + (pv.clientWidth - W * ps) / 2 + 'px,' + (pv.clientHeight - H * ps) / 2 + 'px) scale(' + ps + ')';
     });
   }
-  window.addEventListener('resize', fit);
+  let lastW = 0, lastH = 0;
+  window.addEventListener('resize', () => {
+    // En celular la barra del navegador dispara resize al scrollear; solo se recalcula si cambió el cuadro
+    const box = track.parentNode;
+    if (box.clientWidth === lastW && box.clientHeight === lastH) return;
+    lastW = box.clientWidth; lastH = box.clientHeight;
+    fit();
+  });
   fit();
+  // Cada slide queda armada desde el inicio con su primera escena y sus videos cargando,
+  // así al deslizar ya hay contenido y no se ve negro
+  slides.slice(1).forEach((sl, i) => {
+    const body = sl.querySelector('.demo-body'), sc = DEMOS[i].scenes;
+    sc.slice(1).concat(sc[0]).forEach(scene => { body.innerHTML = scene.tpl; keepVideos(body); });
+  });
+  // Fuera de pantalla (o con la pestaña oculta) el carrusel se frena; al volver retoma la slide actual
+  const pause = () => { stop(); track.querySelectorAll('video').forEach(v => v.pause()); };
+  const resume = () => { if (onScreen && !document.hidden) play(cur, 0); };
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting === onScreen) return;
+    onScreen = e.isIntersecting;
+    onScreen ? resume() : pause();
+  }).observe(stage);
+  document.addEventListener('visibilitychange', () => { document.hidden ? pause() : resume(); });
   setInert();
   play(0, 0);
 })();
