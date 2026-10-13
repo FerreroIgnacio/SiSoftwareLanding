@@ -472,6 +472,7 @@
   .about-row:last-child{ border-bottom:none; }
   .about-row:nth-child(even) .about-art{ order:2; }
   .about-art{
+    position:relative; z-index:1; /* por encima de la luz del cursor */
     margin:0;
     border: 2px solid rgba(240,125,26,0.22);
     border-radius: 18px;
@@ -485,6 +486,11 @@
     aspect-ratio: 4 / 3;
     object-fit: cover;
   }
+  /* Paso 02: foto principal con Santi chico abajo a la derecha, como videollamada */
+  .about-art.stream{ position:relative; }
+  .about-art.stream > img{ object-position: center top; }
+  .stream .cams{ position:absolute; bottom:4%; right:3%; width:24%; display:flex; flex-direction:column; gap:6px; }
+  .stream .cams img{ aspect-ratio: 4 / 3; border:1px solid var(--accent); border-radius:6px; }
   .about-row.in:nth-child(odd) .about-art{ animation: art-in-left .2s cubic-bezier(.2,.7,.2,1) backwards; }
   .about-row.in:nth-child(even) .about-art{ animation: art-in-right .2s cubic-bezier(.2,.7,.2,1) backwards; }
   @keyframes art-in-left{ from{ opacity:0; transform: translateX(-40vw); } }
@@ -801,8 +807,12 @@
           </div>
         </article>
         <article class="about-row reveal">
-          <figure class="about-art">
-            <img src="Arte2.png" alt="Persona desarrollando software frente a una computadora" loading="lazy" width="688" height="688">
+          <figure class="about-art stream">
+            <img src="NachoTrabajando2.webp" alt="Nacho explicando un diagrama en el pizarrón" loading="lazy">
+            <div class="cams">
+              <img src="IntellijFleet.webp" alt="Pantalla compartida con código en IntelliJ" loading="lazy">
+              <img src="Santi.webp" alt="Santi" loading="lazy">
+            </div>
           </figure>
           <div>
             <span class="about-step">Paso 02 · Desarrollo</span>
@@ -818,34 +828,34 @@
         </article>
         <article class="about-row reveal">
           <figure class="about-art">
-            <img src="Arte3.png" alt="Ilustración del equipo de trabajo" loading="lazy" width="678" height="678">
+            <img src="Arte3-meet.png" alt="Ilustración del equipo de trabajo" loading="lazy" width="853" height="640">
           </figure>
           <div>
-            <span class="about-step">Cómo trabajamos</span>
-            <h3>Equipo</h3>
-            <p>Somos pocos y eso juega a favor: hablás directo con quien programa tu sistema, sin intermediarios ni tickets.</p>
+            <span class="about-step">Paso 03 · Devolución</span>
+            <h3>Validación y ajustes</h3>
+            <p>Te contamos qué hicimos, lo validás con tu equipo y ajustamos lo que haga falta antes de seguir.</p>
             <ul class="about-list">
-              <li>Comunicación directa por WhatsApp</li>
               <li>Reuniones cortas para mostrar avances</li>
-              <li>Cambios y decisiones rápidas</li>
+              <li>Vos validás cada entrega</li>
+              <li>Ajustes y cambios rápidos</li>
             </ul>
-            <div class="about-stat"><strong>1 chat</strong><span>directo con quien desarrolla tu sistema</span></div>
+            <div class="about-stat"><strong>Cada avance</strong><span>lo validás vos antes de seguir</span></div>
           </div>
         </article>
         <article class="about-row reveal">
           <figure class="about-art">
-            <img src="Arte4.png" alt="Sistema en pantalla presentado por el equipo" loading="lazy" width="677" height="677">
+            <img src="Arte4-real.png" alt="Sistema en pantalla presentado por el equipo" loading="lazy" width="853" height="640">
           </figure>
           <div>
-            <span class="about-step">Paso 03 · Después</span>
+            <span class="about-step">Paso 04 · Después</span>
             <h3>Entrega y soporte</h3>
-            <p>Te mostramos cada avance y no desaparecemos cuando el sistema arranca: capacitamos a tu equipo y lo seguimos ajustando.</p>
+            <p>No desaparecemos cuando el sistema arranca: capacitamos a tu equipo y lo seguimos ajustando.</p>
             <ul class="about-list">
               <li>Capacitación a las personas que lo van a usar</li>
               <li>Soporte y correcciones después del lanzamiento</li>
               <li>Mejoras a medida que crece tu operación</li>
             </ul>
-            <div class="about-stat"><strong>Cada avance</strong><span>te lo mostramos funcionando antes de seguir</span></div>
+            <div class="about-stat"><strong>Soporte</strong><span>después del lanzamiento, sin que tengas que pedirlo</span></div>
           </div>
         </article>
       </div>
@@ -902,10 +912,23 @@
 </footer>
 
 <script>
+  // Duración del fade según velocidad de scroll: lento → más largo, rápido → más corto
+  let scrollSpeed = 0, lastY = scrollY, lastT = performance.now();
+  addEventListener('scroll', () => {
+    const now = performance.now(), dt = Math.max(now - lastT, 1);
+    scrollSpeed = scrollSpeed * 0.6 + (Math.abs(scrollY - lastY) / dt) * 0.4;
+    lastY = scrollY; lastT = now;
+  }, { passive: true });
+  function reveal(el){
+    const speed = performance.now() - lastT > 150 ? 0 : scrollSpeed; // px/ms
+    const d = Math.min(0.6, Math.max(0.12, 0.3 / Math.max(speed, 0.01)));
+    el.style.transitionDuration = d + 's';
+    el.classList.add('in');
+  }
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => {
       if (e.isIntersecting) {
-        e.target.classList.add('in');
+        reveal(e.target);
         io.unobserve(e.target);
       }
     });
@@ -913,7 +936,7 @@
   const ioAbout = new IntersectionObserver((entries) => {
     entries.forEach(e => {
       if (e.isIntersecting) {
-        e.target.classList.add('in');
+        reveal(e.target);
         ioAbout.unobserve(e.target);
       }
     });
