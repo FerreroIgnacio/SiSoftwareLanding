@@ -29,9 +29,9 @@
   html{scroll-behavior:smooth;}
   /* Pantalla de carga: tapa la página hasta que los videos de la grilla de inicio pueden mostrarse */
   html.loading{ overflow:hidden; }
-  .page-loader{ position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:var(--white); color:var(--accent); }
+  .page-loader{ position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:radial-gradient(circle at 15% 10%, rgba(240,125,26,0.14), transparent 45%), radial-gradient(circle at 85% 90%, rgba(255,173,92,0.10), transparent 45%), var(--bg-soft); color:var(--accent); transition:opacity .12s ease, visibility .12s; }
   .page-loader svg{ width:64px; height:64px; }
-  html:not(.loading) .page-loader{ display:none; }
+  html:not(.loading) .page-loader{ opacity:0; visibility:hidden; pointer-events:none; }
   body{
     font-family: var(--font-body);
     color: var(--ink);
