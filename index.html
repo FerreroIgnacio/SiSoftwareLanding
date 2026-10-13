@@ -27,6 +27,11 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
+  /* Pantalla de carga: tapa la página hasta que los videos de la grilla de inicio pueden mostrarse */
+  html.loading{ overflow:hidden; }
+  .page-loader{ position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:var(--white); color:var(--accent); }
+  .page-loader svg{ width:64px; height:64px; }
+  html:not(.loading) .page-loader{ display:none; }
   body{
     font-family: var(--font-body);
     color: var(--ink);
@@ -765,6 +770,17 @@
 </style>
 </head>
 <body>
+<div class="page-loader" aria-hidden="true">
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="4"/>
+    <text x="50" y="66" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="48" fill="currentColor">Si</text>
+  </svg>
+</div>
+<script>
+  document.documentElement.classList.add('loading');
+  // Por las dudas: nunca queda tapada más de 10 s
+  setTimeout(() => document.documentElement.classList.remove('loading'), 10000);
+</script>
 
 <header>
   <nav class="nav">
@@ -1535,6 +1551,15 @@
   document.addEventListener('visibilitychange', () => { document.hidden ? pause() : resume(); });
   setInert();
   play(0, 0);
+  // Se destapa la página cuando los videos de la grilla de inicio ya tienen su primer cuadro (máx. 8 s);
+  // la grilla arranca de cero en ese momento para que no se pierda tiempo de la slide
+  const ready = [...overview.querySelectorAll('video')].map(v => v.readyState >= 2 ? null :
+    new Promise(r => { v.addEventListener('loadeddata', r, { once: true }); v.addEventListener('error', r, { once: true }); }));
+  Promise.race([Promise.all(ready), new Promise(r => setTimeout(r, 8000))]).then(() => {
+    if (!document.documentElement.classList.contains('loading')) return;
+    document.documentElement.classList.remove('loading');
+    if (cur === 0 && onScreen && !document.hidden) play(0, 0);
+  });
 })();
 </script>
 
