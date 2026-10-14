@@ -80,6 +80,8 @@
     font-size:1.05rem;
     letter-spacing:0.01em;
   }
+  .brand{ transform-origin:left center; transition:transform .15s; }
+  .brand:hover{ transform:scale(1.08); }
   .brand .mark{width:34px;height:34px;color:var(--accent);}
   .nav-links{
     display:flex;
@@ -1495,7 +1497,6 @@
       if (Math.abs(dx) < 6) return;
       dragged = true;
       clearTimeout(holdTimer);
-      if (held) { held = false; unfreeze(); }
       // En los extremos se muestra la copia de la primera slide del otro lado
       if (cur === 0 && dx > 0) { ghost.appendChild(canvas0); drag.base = N; }
       if (cur === N - 1) ghost.appendChild(canvas0);
@@ -1508,12 +1509,16 @@
     const dx = e.clientX - drag.x, d = drag;
     drag = null;
     clearTimeout(holdTimer);
-    // Si estaba congelada, soltar solo la descongela (no cuenta como toque ni click)
-    if (held) { held = false; dragged = true; unfreeze(); return; }
+    // Congelada: sigue así mientras arrastres; se descongela recién al soltar.
+    // Soltar sin haber arrastrado no cuenta como toque ni click
+    const wasHeld = held;
+    held = false;
+    if (wasHeld && !dragged) { dragged = true; unfreeze(); return; }
     // En el celular, tocar el carrusel (fuera de botones y pestañas) pasa a la demo siguiente
     if (!dragged) { if (e.pointerType === 'touch' && !e.target.closest('button, .ov-tile')) go(1); return; }
     track.style.transition = '';
     if (Math.abs(dx) > Math.min(80, d.w * 0.15)) { go(dx < 0 ? 1 : -1); return; }
+    if (wasHeld) unfreeze();
     moveTo(d.base, true);
     setTimeout(() => { if (!drag) { if (d.base !== cur) moveTo(cur, false); home(); } }, 600);
   });
