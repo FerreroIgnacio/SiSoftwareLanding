@@ -1280,10 +1280,19 @@
     ]
   };
 
+  // 3. Flota: en construcción, mientras tanto un gatito
+  const wip = {
+    tpl: '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center">' +
+      '<img src="demos/gatito.jpg" alt="Gatito" style="width:min(320px,70%);aspect-ratio:1;object-fit:cover;border-radius:16px">' +
+      '<b style="font:700 22px var(--font-head)">Demo en construcción</b></div>',
+    dur: 8000,
+    steps: () => []
+  };
+
   const DEMOS = [
     { t: 'Pedidos por WhatsApp', q: '¿Necesitás tomar pedidos por WhatsApp?', scenes: [chatbot] },
     { t: 'Seguridad e higiene', q: '¿Necesitás supervisar tu operación en tiempo real?', scenes: [epp] },
-    { t: 'Flota en vivo', q: '¿Necesitás saber dónde está cada entrega?', scenes: [flota] },
+    { t: 'Flota en vivo', q: '¿Necesitás saber dónde está cada entrega?', scenes: [wip] },
     { t: 'Conteo y gestión de inventario', q: '¿Necesitás saber qué tenés en stock sin contar a mano?', scenes: [erp] }
   ];
 
