@@ -1457,7 +1457,7 @@
     return seen >= 0.2 * Math.min(r.height, innerHeight);
   }
   // Si el foco del teclado está en el carrusel, no avanza solo (la slide enfocada quedaría inerte)
-  function auto(){ stage.contains(document.activeElement) ? play(cur, 0) : go(1); }
+  function auto(){ stage.contains(document.activeElement) && document.activeElement.matches(':focus-visible') ? play(cur, 0) : go(1); }
   // Tab recorre el carrusel entero: pregunta → slide → pregunta → slide…; de la última sigue con la página
   slides.forEach(sl => { sl.tabIndex = -1; });
   const q = n => slides[n].querySelector('.q-main');
